@@ -425,27 +425,36 @@ HashRing.prototype.add = function add(servers) {
   return this.continuum();
 };
 
+
+
 /**
- * Remove a server from the hashring.
+ * Remove servers from the hashring.
  *
- * @param {Mixed} server The sever we want to remove.
+ * @param {Mixed} servers The sever we want to remove.
  * @returns {HashRing}
  * @api public
  */
-HashRing.prototype.remove = function remove(server) {
-  var connection = parse(server).servers.pop();
+HashRing.prototype.remove = function remove(servers) {
+	if (!Array.isArray(servers)) {
+		servers = [servers]
+	}
+	var connections = Object.create(null)
+	parse(servers).servers.forEach((server) => {
+		connections[server.string] = server
+		delete this.vnodes[server.string]
+	})
 
-  delete this.vnodes[connection.string];
-  this.servers = this.servers.map(function map(server) {
-    if (server.string === connection.string) return undefined;
+	this.servers = this.servers
+		.map(function map(server) {
+			if (server.string in connections) return undefined
+			return server
+		})
+		.filter(Boolean)
 
-    return server;
-  }).filter(Boolean);
-
-  // Rebuild the hash ring
-  this.reset();
-  return this.continuum();
-};
+	// Rebuild the hash ring
+	this.reset()
+	return this.continuum()
+}
 
 /**
  * Checks if a given server exists in the hash ring.
